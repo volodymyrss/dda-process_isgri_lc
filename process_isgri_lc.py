@@ -43,11 +43,14 @@ def get_open_fds():
     return nprocs
 
 
+class FactorLCfromScW(graphtools.Factorize):
+    root='ii_lc_extract'
+    leaves=["ScWData","Revolution"]
 
 class ScWLCList(ddosa.DataAnalysis):
     input_scwlist=ddosa.RevScWList
     copy_cached_input=False
-    input_lcsummary=graphtools.Factorize(use_root='ii_lc_extract',use_leaves=["ScWData","Revolution"])
+    input_lcsummary=FactorLCfromScW
 
     allow_alias=True
 
