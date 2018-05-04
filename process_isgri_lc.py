@@ -69,7 +69,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
     cached=True
 
-    version="v1"
+    version="v1.1"
 
     sources=["Crab"]
     extract_all=True
@@ -164,7 +164,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
             lc.writeto(fn,clobber=True)
 
             attr=fn.replace(".fits","")
-            self.extracted_sources.append(attr)
+            self.extracted_sources.append([name,attr])
 
             setattr(self,attr,da.DataFile(fn))
 
