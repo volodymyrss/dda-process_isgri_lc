@@ -163,7 +163,10 @@ class ISGRILCSum(ddosa.DataAnalysis):
             fn="isgri_sum_lc_%s.fits"%source_short_name
             lc.writeto(fn,clobber=True)
 
-            setattr(self,fn.replace(".fits",""),da.DataFile(fn))
+            attr=fn.replace(".fits","")
+            self.extracted_sources.append(attr)
+
+            setattr(self,attr,da.DataFile(fn))
 
 
 
