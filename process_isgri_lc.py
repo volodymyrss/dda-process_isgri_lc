@@ -12,8 +12,6 @@ from dataanalysis import graphtools
 from numpy import *
 from collections import defaultdict
 
-import useresponse
-
 try:
     import crab
 except:
