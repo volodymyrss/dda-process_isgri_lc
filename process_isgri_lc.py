@@ -10,6 +10,9 @@ import dataanalysis as da
 from dataanalysis import graphtools
 
 from numpy import *
+
+import numpy as np
+
 from collections import defaultdict
 
 try:
@@ -69,7 +72,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
     cached=True
 
-    version="v1.1"
+    version="v1.1.1"
 
     sources=["Crab"]
     extract_all=True
@@ -159,8 +162,24 @@ class ISGRILCSum(ddosa.DataAnalysis):
         for name,lc in lcs.items():
             source_short_name=name.strip().replace(" ","_")
 
+            t_lc = lc.data['TIME']
+
+            timedel = lc.header['TIMEDEL']
+            dt_lc = (timedel / 2) * np.ones(t_lc.shape)
+
+            for i in range(len(t_lc) - 1):
+                dt_lc[i + 1] = min(timedel / 2, t_lc[i + 1] - t_lc[i] - dt_lc[i])
+
+            lc_data = fits.BinTableHDU.from_columns(
+                            lc.data.columns + fits.ColDefs([fits.Column(name='XAX_E', format='1D')])
+                        ).data
+
+            lc_data['XAX_E'] = dt_lc
+
+            lc.data = lc_data
 
             fn="isgri_sum_lc_%s.fits"%source_short_name
+
             lc.writeto(fn,clobber=True)
 
             attr=fn.replace(".fits","")
