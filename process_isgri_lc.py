@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import ddosa 
 from astropy.io import fits 
-from bcolors import render
+from pscolors import render
 import subprocess
 import os
 
