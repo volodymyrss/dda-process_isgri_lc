@@ -1,7 +1,8 @@
 from __future__ import print_function
+import dataanalysis.callback
 
-import ddosa 
-from astropy.io import fits 
+import ddosa
+from astropy.io import fits
 try:
     from pscolors import render
 except:
@@ -20,6 +21,13 @@ try:
 except:
     pass
 
+import logging
+
+logging.basicConfig(level='INFO')
+
+logger = logging.getLogger()
+
+
 def get_open_fds():
     '''
     return the number of open file descriptors for current process
@@ -28,124 +36,155 @@ def get_open_fds():
     '''
 
     pid = os.getpid()
-    procs = subprocess.check_output( 
-        #[ "lsof", '-w', '-Ff', "-p", str( pid ) ] )
-        [ "lsof", '-w', '-Fn', "-p", str( pid ) ] )
+    procs = subprocess.check_output(
+        # [ "lsof", '-w', '-Ff', "-p", str( pid ) ] )
+        ["lsof", '-w', '-Fn', "-p", str(pid)])
 
-    #files=filter( 
+    # files=filter(
     #        lambda s: s and s[ 0 ] == 'f' and s[1: ].isdigit(),
-    files=        procs.split( '\n' ) 
+    files = procs.split('\n')
 
-    #print(files)
+    # print(files)
 
-    nprocs = len( 
-            files
-        )
+    nprocs = len(
+        files
+    )
     return nprocs
 
 
 class FactorLCfromScW(graphtools.Factorize):
-    root='ii_lc_extract'
-    leaves=["ScWData","Revolution"]
+    root = 'ii_lc_extract'
+    leaves = ["ScWData", "Revolution"]
+
 
 class ScWLCList(ddosa.DataAnalysis):
-    input_scwlist=ddosa.RevScWList
-    copy_cached_input=False
-    input_lcsummary=FactorLCfromScW
+    input_scwlist = ddosa.RevScWList
+    copy_cached_input = False
+    input_lcsummary = FactorLCfromScW
 
-    allow_alias=True
+    allow_alias = True
 
-    version="allthem"
-    
+    version = "allthem"
+
     def main(self):
-        self.lcs=[[ddosa.ii_lc_extract(assume=scw)] for scw in self.input_scwlist.scwlistdata]
+        self.lcs = [[ddosa.ii_lc_extract(assume=scw)]
+                    for scw in self.input_scwlist.scwlistdata]
 
-        if len(self.lcs)==0:
+        if len(self.lcs) == 0:
             raise ddosa.EmptyScWList()
-        
+
 
 class ISGRILCSum(ddosa.DataAnalysis):
-    input_lclist=ScWLCList
+    input_lclist = ScWLCList
 
-    copy_cached_input=False
+    copy_cached_input = False
 
+    cached = True
 
-    cached=True
+    version = "v1.1"
 
-    version="v1.1"
-
-    sources=["Crab"]
-    extract_all=True
-    #save_spec=True
+    sources = ["Crab"]
+    extract_all = True
+    # save_spec=True
 
     def get_version(self):
-        v=self.get_signature()+"."+self.version
+        v = self.get_signature()+"."+self.version
         if self.extract_all:
-            v+=".extractall"
+            v += ".extractall"
         else:
             v+".extract_"+("_".join(self.sources))
         return v
 
-    def main(self):
-        lcs={}
+    def patch_isgri_lc_xax_e(self, lc):
+        timedel = lc.header['TIMEDEL']
 
-        choice=self.input_lclist.lcs
+        time = lc.data['TIME']
 
-        allsource_summary=[]
+        n_lines = len(lc.data)
 
+        new_time = zeros(n_lines)
+        new_time[0] = timedel/2
 
-        sig=lambda x,y:(((x/y)[~isnan(y) & (y!=0) & ~isinf(y) & ~isinf(x) & ~isnan(x)])**2).sum()**0.5
+        
 
-        import time
-        t0=time.time()
-        i_lc=1
-
-        for lc, in choice:
-            if hasattr(lc,'empty_results'):
-                print("skipping, for clearly empty:",lc)
+        for i in range(1, n_lines):
+            x = time[i] - time[i-1] - new_time[i-1]
+            if x <= 0:
+                logger.warning(
+                    "lc_pick cleaning ISGRI, inconsistent binning at index %d", i)
                 continue
 
-            if not hasattr(lc,'lightcurve'):
-                print("skipping, for whatever reason no data:",lc)
+            if x < timedel/2:
+                new_time[i] = x
+            else:
+                new_time[i] = timedel/2
+
+        lc.data['XAX_E'] = new_time
+		
+    def main(self):
+        lcs = {}
+
+        choice = self.input_lclist.lcs
+
+        allsource_summary = []
+
+        def sig(x, y): return (
+            ((x/y)[~isnan(y) & (y != 0) & ~isinf(y) & ~isinf(x) & ~isnan(x)])**2).sum()**0.5
+
+        import time
+        t0 = time.time()
+        i_lc = 1
+
+        for lc, in choice:
+            if hasattr(lc, 'empty_results'):
+                print("skipping, for clearly empty:", lc)
+                continue
+
+            if not hasattr(lc, 'lightcurve'):
+                print("skipping, for whatever reason no data:", lc)
                 print(dir(lc))
                 continue
 
+            fn = lc.lightcurve.get_path()
+            print("%i/%i" % (i_lc, len(choice)))
+            tc = time.time()
+            print("seconds per lc:", (tc-t0)/i_lc, "will be ready in %.5lg seconds" %
+                  ((len(choice)-i_lc)*(tc-t0)/i_lc))
+            i_lc += 1
+            print("lc from", fn)
 
-            fn=lc.lightcurve.get_path()
-            print("%i/%i"%(i_lc,len(choice)))
-            tc=time.time()
-            print("seconds per lc:",(tc-t0)/i_lc,"will be ready in %.5lg seconds"%((len(choice)-i_lc)*(tc-t0)/i_lc))
-            i_lc+=1
-            print("lc from",fn)
+            f = fits.open(fn)
 
-            f=fits.open(fn)
-
-            t1,t2=f[1].header['TSTART'],f[1].header['TSTOP']
-            print(t1,t2)
+            t1, t2 = f[1].header['TSTART'], f[1].header['TSTOP']
+            print(t1, t2)
 
             for e in f:
                 try:
-                    if e.header['EXTNAME']!="ISGR-SRC.-LCR": continue
+                    if e.header['EXTNAME'] != "ISGR-SRC.-LCR":
+                        continue
                 except:
                     continue
 
                 try:
-                    name=e.header['NAME']
+                    name = e.header['NAME']
                 except:
-                    name="Unnamed"
+                    name = "Unnamed"
 
-                allsource_summary.append([name,t1,t2,copy(e.data['RATE']),copy(e.data['ERROR'])])
+                allsource_summary.append(
+                    [name, t1, t2, copy(e.data['RATE']), copy(e.data['ERROR'])])
+
                 if (name in self.sources) or (self.extract_all):
-                    rate=e.data['RATE']
-                    err=e.data['ERROR']
-                    exposure=e.header['EXPOSURE']
+                    rate = e.data['RATE']
+                    err = e.data['ERROR']
+                   # exposure = e.header['EXPOSURE']
                     if name not in lcs:
-                        lcs[name]=e
-                        preserve_file=True
+                        lcs[name] = e
+                     #   preserve_file = True
                     else:
-                        lcs[name].data=concatenate((lcs[name].data,e.data))
+                        lcs[name].data = concatenate((lcs[name].data, e.data))
 
-                    print(render("{BLUE}%.20s{/}"%name),"%.4lg sigma"%(sig(rate,err)),"total %.4lg"%(sig(lcs[name].data['RATE'],lcs[name].data['ERROR'])))
+                    print(render("{BLUE}%.20s{/}" % name), "%.4lg sigma" % (sig(rate, err)),
+                          "total %.4lg" % (sig(lcs[name].data['RATE'], lcs[name].data['ERROR'])))
 
             f.close()
 
@@ -154,29 +193,24 @@ class ISGRILCSum(ddosa.DataAnalysis):
             except Exception as e:
                 print("unable to check open fds")
 
-        #self.lcs=lcs
+        # self.lcs=lcs
 
-        source_results=[]
-        self.extracted_sources=[]
+        # source_results = []
+        self.extracted_sources = []
 
-        for name,lc in lcs.items():
-            source_short_name=name.strip().replace(" ","_")
+        for name, lc in lcs.items():
+            source_short_name = name.strip().replace(" ", "_")
 
+            self.patch_isgri_lc_xax_e(lc)
 
-            fn="isgri_sum_lc_%s.fits"%source_short_name
-            lc.writeto(fn,clobber=True)
+            fn = "isgri_sum_lc_%s.fits" % source_short_name
+            lc.writeto(fn, clobber=True)
 
-            attr=fn.replace(".fits","")
-            self.extracted_sources.append([name,attr])
+            attr = fn.replace(".fits", "")
+            self.extracted_sources.append([name, attr])
 
-            setattr(self,attr,da.DataFile(fn))
-
-
-
+            setattr(self, attr, da.DataFile(fn))
 
 
-import dataanalysis.callback
-
-dataanalysis.callback.default_callback_filter.set_callback_accepted_classes([ddosa.mosaic_ii_skyimage, ddosa.ii_skyimage, ddosa.BinEventsImage, ddosa.ibis_gti, ddosa.ibis_dead, ddosa.ISGRIEvents, ddosa.ii_spectra_extract, ddosa.BinEventsSpectra, ddosa.ii_lc_extract, ddosa.BinEventsLC, ISGRILCSum])
-
-
+dataanalysis.callback.default_callback_filter.set_callback_accepted_classes(
+    [ddosa.mosaic_ii_skyimage, ddosa.ii_skyimage, ddosa.BinEventsImage, ddosa.ibis_gti, ddosa.ibis_dead, ddosa.ISGRIEvents, ddosa.ii_spectra_extract, ddosa.BinEventsSpectra, ddosa.ii_lc_extract, ddosa.BinEventsLC, ISGRILCSum])
