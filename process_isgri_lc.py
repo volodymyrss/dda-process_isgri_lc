@@ -106,9 +106,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
         new_time = zeros(n_lines)
         new_time[0] = timedel/2
-
-        
-
+    
         for i in range(1, n_lines):
             x = time[i] - time[i-1] - new_time[i-1]
             if x <= 0:
@@ -121,7 +119,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
             else:
                 new_time[i] = timedel/2
 
-        lc.add_column(Column(name='XAX_E', data=new_time))
+        lc.columns.add_col(fits.Column('XAX_E', format='1E', array=new_time))
 		
     def main(self):
         lcs = {}
