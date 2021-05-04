@@ -16,6 +16,8 @@ from dataanalysis import graphtools
 from numpy import *
 from collections import defaultdict
 
+from astropy.io.fits import Column
+
 try:
     import crab
 except:
@@ -119,7 +121,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
             else:
                 new_time[i] = timedel/2
 
-        lc.data.add_column(Column(name='XAX_E', data=new_time))
+        lc.add_column(Column(name='XAX_E', data=new_time))
 		
     def main(self):
         lcs = {}
