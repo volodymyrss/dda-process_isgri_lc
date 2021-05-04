@@ -119,7 +119,9 @@ class ISGRILCSum(ddosa.DataAnalysis):
             else:
                 new_time[i] = timedel/2
 
-        lc.columns.add_col(fits.Column('XAX_E', format='1E', array=new_time))
+
+        nc = lc.columns.add_col(fits.Column('XAX_E', format='1E', array=new_time))
+        return fits.BinTableHDU.from_columns(nc)
 		
     def main(self):
         lcs = {}
@@ -206,7 +208,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
             lc.writeto(fn, clobber=True)
 
             lc = fits.open(fn)
-            self.patch_isgri_lc_xax_e(lc[1])
+            lc = self.patch_isgri_lc_xax_e(lc[1])
             lc.writeto(fn, clobber=True)
 
 
