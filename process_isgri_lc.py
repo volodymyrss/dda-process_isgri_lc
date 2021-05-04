@@ -119,7 +119,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
             else:
                 new_time[i] = timedel/2
 
-        lc.data['XAX_E'] = new_time
+        lc.data.add_column(Column(name='XAX_E', data=new_time))
 		
     def main(self):
         lcs = {}
