@@ -83,7 +83,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
     cached = True
 
-    version = "v1.1.1"
+    version = "v1.1.2"
 
     sources = ["Crab"]
     extract_all = True
