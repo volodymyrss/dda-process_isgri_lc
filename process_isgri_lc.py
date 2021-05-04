@@ -201,10 +201,14 @@ class ISGRILCSum(ddosa.DataAnalysis):
         for name, lc in lcs.items():
             source_short_name = name.strip().replace(" ", "_")
 
-            self.patch_isgri_lc_xax_e(lc)
 
             fn = "isgri_sum_lc_%s.fits" % source_short_name
             lc.writeto(fn, clobber=True)
+
+            lc = fits.open(fn)
+            self.patch_isgri_lc_xax_e(lc)
+            lc.writeto(fn, clobber=True)
+
 
             attr = fn.replace(".fits", "")
             self.extracted_sources.append([name, attr])
