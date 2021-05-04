@@ -206,7 +206,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
             lc.writeto(fn, clobber=True)
 
             lc = fits.open(fn)
-            self.patch_isgri_lc_xax_e(lc)
+            self.patch_isgri_lc_xax_e(lc[1])
             lc.writeto(fn, clobber=True)
 
 
