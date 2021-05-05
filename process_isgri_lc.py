@@ -83,7 +83,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
     cached = True
 
-    version = "v1.1.4"
+    version = "v1.1.5"
 
     sources = ["Crab"]
     extract_all = True
@@ -121,7 +121,12 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
 
         nc = lc.columns.add_col(fits.Column('XAX_E', format='1E', array=new_time))
-        return fits.BinTableHDU.from_columns(nc)
+        nlc = fits.BinTableHDU.from_columns(nc)
+
+        for k,v in lc.header.items():
+            nlc.header[k] = v
+
+        return nlc
 		
     def main(self):
         lcs = {}
