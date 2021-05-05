@@ -83,7 +83,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
     cached = True
 
-    version = "v1.1.3"
+    version = "v1.1.4"
 
     sources = ["Crab"]
     extract_all = True
@@ -207,9 +207,15 @@ class ISGRILCSum(ddosa.DataAnalysis):
             fn = "isgri_sum_lc_%s.fits" % source_short_name
             lc.writeto(fn, clobber=True)
 
-            #lc = fits.open(fn)
-            #lc = self.patch_isgri_lc_xax_e(lc[1])
-            #lc.writeto(fn, clobber=True)
+            lc = fits.open(fn)
+            lc = self.patch_isgri_lc_xax_e(lc[1])
+            
+
+            lc.writeto(fn, clobber=True)
+
+            lc = fits.open(fn)
+            print("patched lc columns:", lc[1].data.columns)
+            assert 'XAX_E' in [ c.name for c in lc[1].data.columns ]
 
 
             attr = fn.replace(".fits", "")
