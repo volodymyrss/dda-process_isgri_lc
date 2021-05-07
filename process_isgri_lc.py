@@ -99,7 +99,6 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
     def patch_isgri_lc_xax_e(self, lc):
         timedel = lc.header['TIMEDEL']
-
         time = lc.data['TIME']
 
         n_lines = len(lc.data)
@@ -124,7 +123,8 @@ class ISGRILCSum(ddosa.DataAnalysis):
         nlc = fits.BinTableHDU.from_columns(nc)
 
         for k,v in lc.header.items():
-            nlc.header[k] = v
+            if k not in nlc.header:
+                nlc.header[k] = v
 
         return nlc
 		
@@ -208,20 +208,22 @@ class ISGRILCSum(ddosa.DataAnalysis):
         for name, lc in lcs.items():
             source_short_name = name.strip().replace(" ", "_")
 
-
+            prepatch_fn = "isgri_sum_lc_prepatch_%s.fits" % source_short_name
             fn = "isgri_sum_lc_%s.fits" % source_short_name
-            lc.writeto(fn, clobber=True)
 
-            lc = fits.open(fn)
-            lc = self.patch_isgri_lc_xax_e(lc[1])
-            
+            lc.writeto(prepatch_fn, clobber=True)
 
-            lc.writeto(fn, clobber=True)
+            reopened_lc = fits.open(prepatch_fn)
+            patched_lc = fits.HDUList([fits.PrimaryHDU(), self.patch_isgri_lc_xax_e(reopened_lc[1])])
+            patched_lc.writeto(fn, clobber=True)
 
-            lc = fits.open(fn)
-            print("patched lc columns:", lc[1].data.columns)
-            assert 'XAX_E' in [ c.name for c in lc[1].data.columns ]
+            reopened_lc.close()
 
+            # test
+            test_lc = fits.open(fn)
+            print("patched lc columns:", test_lc[1].data.columns)
+            assert 'XAX_E' in [ c.name for c in test_lc[1].data.columns ]
+            test_lc.close()
 
             attr = fn.replace(".fits", "")
             self.extracted_sources.append([name, attr])
