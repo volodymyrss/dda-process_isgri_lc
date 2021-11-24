@@ -142,6 +142,8 @@ class ISGRILCSum(ddosa.DataAnalysis):
         t0 = time.time()
         i_lc = 1
 
+        used_fns = []
+
         for lc, in choice:
             if hasattr(lc, 'empty_results'):
                 print("skipping, for clearly empty:", lc)
@@ -153,6 +155,12 @@ class ISGRILCSum(ddosa.DataAnalysis):
                 continue
 
             fn = lc.lightcurve.get_path()
+
+            if fn in used_fns:
+                raise RuntimeError(f'found duplicate LC file {fn}, used so far {used_fns}')
+            else:
+                used_fns.append(fn)
+
             print("%i/%i" % (i_lc, len(choice)))
             tc = time.time()
             print("seconds per lc:", (tc-t0)/i_lc, "will be ready in %.5lg seconds" %
