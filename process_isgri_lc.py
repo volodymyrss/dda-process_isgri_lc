@@ -174,6 +174,8 @@ class ISGRILCSum(ddosa.DataAnalysis):
             print(t1, t2)
 
             for e in f:
+                print("proceeding to open in", f.filename(), "extension", e)
+
                 try:
                     if e.header['EXTNAME'] != "ISGR-SRC.-LCR":
                         continue
@@ -193,9 +195,11 @@ class ISGRILCSum(ddosa.DataAnalysis):
                     err = e.data['ERROR']
                    # exposure = e.header['EXPOSURE']
                     if name not in lcs:
-                        lcs[name] = e
+                        print("new lcs[name]", lcs, name)
+                        lcs[name] = e.copy()
                      #   preserve_file = True
-                    else:
+                    else:                        
+                        print("lcs[name].data of", len(lcs[name].data), "e.data of", len(e.data))
                         lcs[name].data = concatenate((lcs[name].data, e.data))
 
                     print(render("{BLUE}%.20s{/}" % name), "%.4lg sigma" % (sig(rate, err)),
