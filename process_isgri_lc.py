@@ -1,4 +1,5 @@
 from __future__ import print_function
+from copy import deepcopy
 import dataanalysis.callback
 
 import ddosa
@@ -194,6 +195,8 @@ class ISGRILCSum(ddosa.DataAnalysis):
                 print(dir(lc))
                 continue
 
+            snapshot_pre_loop = tracemalloc.take_snapshot()
+
             fn = lc.lightcurve.get_path()
 
             if fn in used_fns:
@@ -207,7 +210,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
                   ((len(choice)-i_lc)*(tc-t0)/i_lc))
             i_lc += 1
             print("lc from", fn)
-
+            
             with fits.open(fn, memmap=False) as f:
 
                 t1, t2 = f[1].header['TSTART'], f[1].header['TSTOP']
@@ -215,32 +218,24 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
                 for e in f:
                     print("proceeding to open in", f.filename(), "extension", e)
-                    # Getting % usage of virtual_memory ( 3rd field)
-                    print('RAM memory % used:', psutil.virtual_memory()[2])
-                    print('RAM memory:', psutil.virtual_memory())
 
+                    e = deepcopy(e)
 
-                    try:
-                        if e.header['EXTNAME'] != "ISGR-SRC.-LCR":
-                            continue
-                    except:
+                    if e.header.get('EXTNAME', 'unnamed') != "ISGR-SRC.-LCR":
                         continue
-
-                    try:
-                        name = e.header['NAME']
-                    except:
-                        name = "Unnamed"
+                    
+                    name = e.header.get('NAME', "Unnamed")
 
                     allsource_summary.append(
-                        [name, t1, t2, copy(e.data['RATE']), copy(e.data['ERROR'])])
+                        [name, t1, t2, e.data['RATE'], e.data['ERROR']])
 
                     if (name in self.sources) or (self.extract_all):
                         rate = e.data['RATE']
                         err = e.data['ERROR']
                     # exposure = e.header['EXPOSURE']
                         if name not in lcs:
-                            print("new lcs[name]", lcs, name)
-                            lcs[name] = e.copy()
+                            print("new lcs[name]", name)
+                            lcs[name] = e
                         #   preserve_file = True
                         else:                        
                             print("lcs[name].data of", len(lcs[name].data), "e.data of", len(e.data))
@@ -251,13 +246,23 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
                         print("\033[31msize of lcs[name]", lcs[name].size/1024/1024, "Mb" , lcs[name].data.size * lcs[name].data.itemsize/1024/1024, "Mb\033[0m")
 
+            print('RAM memory % used:', psutil.virtual_memory()[2])
+            print('RAM memory:', psutil.virtual_memory())
+
             try:
-                print(get_open_fds())
+                print("get_open_fds", get_open_fds())
             except Exception as e:
-                print("unable to check open fds")
+                print("unable to check open fds", e)
 
             snapshot = tracemalloc.take_snapshot()
             display_top(snapshot)
+
+            diff = snapshot_pre_loop.compare_to(snapshot, 'lineno')
+            
+            print("[ Top 10 differences ]")
+            for stat in diff[:10]:
+                print("\033[32m", stat, "\033[0m")
+            # assert diff[0].size_diff*u.B < 1*u.MB
 
 
 
