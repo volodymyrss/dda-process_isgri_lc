@@ -212,14 +212,14 @@ class ISGRILCSum(ddosa.DataAnalysis):
             i_lc += 1
             print("lc from", fn)
                         
-            f = fits.open(fn, memmap=False)
+            f = fits.open(fn, memmap=False, mode='readonly', cache=False)
             print("proceeding to parse", f.filename())
 
             t1, t2 = f[1].header['TSTART'], f[1].header['TSTOP']
             print(t1, t2)
 
             for _e in f:                    
-                e = deepcopy(_e.copy())
+                e = _e.copy()
                 del _e
 
                 if e.header.get('EXTNAME', 'unnamed') != "ISGR-SRC.-LCR":
@@ -256,15 +256,20 @@ class ISGRILCSum(ddosa.DataAnalysis):
             except Exception as e:
                 print("unable to check open fds", e)
 
+
+
+            A = np.random.rand(1024*1024*50)
+            del A
+            
             snapshot = tracemalloc.take_snapshot()
             display_top(snapshot)
 
-
-            diff = snapshot_pre_loop.compare_to(snapshot, 'lineno')
+            diff = snapshot.compare_to(snapshot_pre_loop, 'lineno')
             
             print("[ Top 10 differences ]")
             for stat in diff[:10]:
-                print("\033[32m", stat, "\033[0m")
+                print("\033[31m", stat.size_diff/1024./1024, "Mb", "\033[32m", stat, "\033[0m")
+
             # assert diff[0].size_diff*u.B < 1*u.MB
 
             # pick the biggest memory block
