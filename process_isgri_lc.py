@@ -249,6 +249,8 @@ class ISGRILCSum(ddosa.DataAnalysis):
                         print(render("{BLUE}%.20s{/}" % name), "%.4lg sigma" % (sig(rate, err)),
                             "total %.4lg" % (sig(lcs[name].data['RATE'], lcs[name].data['ERROR'])))
 
+                        print("\033[31msize of lcs[name]", lcs[name].size/1024/1024, "Mb" , lcs[name].data.size * lcs[name].data.itemsize/1024/1024, "Mb\033[0m")
+
             try:
                 print(get_open_fds())
             except Exception as e:
