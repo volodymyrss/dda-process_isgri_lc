@@ -15,6 +15,7 @@ import dataanalysis as da
 from dataanalysis import graphtools
 
 from numpy import *
+import numpy as np
 from collections import defaultdict
 
 from astropy.io.fits import Column
@@ -177,7 +178,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
         allsource_summary = []
 
         def sig(x, y): return (
-            ((x/y)[~isnan(y) & (y != 0) & ~isinf(y) & ~isinf(x) & ~isnan(x)])**2).sum()**0.5
+            ((x/y)[~np.isnan(y) & (y != 0) & ~np.isinf(y) & ~np.isinf(x) & ~np.isnan(x)])**2).sum()**0.5
 
         import time
         t0 = time.time()
@@ -216,10 +217,11 @@ class ISGRILCSum(ddosa.DataAnalysis):
                 t1, t2 = f[1].header['TSTART'], f[1].header['TSTOP']
                 print(t1, t2)
 
-                for e in f:
-                    print("proceeding to open in", f.filename(), "extension", e)
+                for _e in f:
+                    print("proceeding to open in", f.filename(), "extension", _e)
 
-                    e = deepcopy(e)
+                    e = deepcopy(_e.copy())
+                    del _e
 
                     if e.header.get('EXTNAME', 'unnamed') != "ISGR-SRC.-LCR":
                         continue
@@ -232,11 +234,9 @@ class ISGRILCSum(ddosa.DataAnalysis):
                     if (name in self.sources) or (self.extract_all):
                         rate = e.data['RATE']
                         err = e.data['ERROR']
-                    # exposure = e.header['EXPOSURE']
                         if name not in lcs:
                             print("new lcs[name]", name)
                             lcs[name] = e
-                        #   preserve_file = True
                         else:                        
                             print("lcs[name].data of", len(lcs[name].data), "e.data of", len(e.data))
                             lcs[name].data = concatenate((lcs[name].data, e.data))
@@ -257,12 +257,19 @@ class ISGRILCSum(ddosa.DataAnalysis):
             snapshot = tracemalloc.take_snapshot()
             display_top(snapshot)
 
+
             diff = snapshot_pre_loop.compare_to(snapshot, 'lineno')
             
             print("[ Top 10 differences ]")
             for stat in diff[:10]:
                 print("\033[32m", stat, "\033[0m")
             # assert diff[0].size_diff*u.B < 1*u.MB
+
+            # pick the biggest memory block
+            stat = diff[0]
+            print("%s memory blocks: %.1f KiB" % (stat.count, stat.size / 1024))
+            for line in stat.traceback.format():
+                print(line)
 
 
 
@@ -281,7 +288,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
             reopened_lc = fits.open(prepatch_fn)
             patched_lc = fits.HDUList([fits.PrimaryHDU(), self.patch_isgri_lc_xax_e(reopened_lc[1])])
-            patched_lc.writeto(fn, clobber=True)
+            patched_lc.writeto(fn, overwrite=True)
 
             reopened_lc.close()
 
