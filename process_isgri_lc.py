@@ -217,6 +217,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
                     print("proceeding to open in", f.filename(), "extension", e)
                     # Getting % usage of virtual_memory ( 3rd field)
                     print('RAM memory % used:', psutil.virtual_memory()[2])
+                    print('RAM memory:', psutil.virtual_memory())
 
 
                     try:
