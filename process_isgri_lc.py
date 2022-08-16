@@ -23,6 +23,9 @@ try:
 except:
     pass
 
+# Importing the library
+import psutil
+  
 import logging
 
 logging.basicConfig(level='INFO')
@@ -175,6 +178,9 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
             for e in f:
                 print("proceeding to open in", f.filename(), "extension", e)
+                # Getting % usage of virtual_memory ( 3rd field)
+                print('RAM memory % used:', psutil.virtual_memory()[2])
+
 
                 try:
                     if e.header['EXTNAME'] != "ISGR-SRC.-LCR":
