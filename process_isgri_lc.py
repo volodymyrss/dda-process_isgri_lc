@@ -208,7 +208,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
             i_lc += 1
             print("lc from", fn)
 
-            with fits.open(fn) as f:
+            with fits.open(fn, memmap=False) as f:
 
                 t1, t2 = f[1].header['TSTART'], f[1].header['TSTOP']
                 print(t1, t2)
