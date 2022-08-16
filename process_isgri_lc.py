@@ -33,6 +33,41 @@ logging.basicConfig(level='INFO')
 logger = logging.getLogger()
 
 
+
+import linecache
+import os
+import tracemalloc
+
+def display_top(snapshot, key_type='lineno', limit=3):
+    snapshot = snapshot.filter_traces((
+        tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+        tracemalloc.Filter(False, "<unknown>"),
+    ))
+    top_stats = snapshot.statistics(key_type)
+
+    def cprint(*args):
+        print("\033[34m", *args, "\033[0m")
+
+    cprint("Top %s lines" % limit)
+    for index, stat in enumerate(top_stats[:limit], 1):
+        frame = stat.traceback[0]
+        # replace "/path/to/module/file.py" with "module/file.py"
+        filename = os.sep.join(frame.filename.split(os.sep)[-2:])
+        cprint("#%s: %s:%s: %.1f KiB"
+              % (index, filename, frame.lineno, stat.size / 1024))
+        line = linecache.getline(frame.filename, frame.lineno).strip()
+        if line:
+            cprint('    %s' % line)
+
+    other = top_stats[limit:]
+    if other:
+        size = sum(stat.size for stat in other)
+        cprint("%s other: %.1f KiB" % (len(other), size / 1024))
+    total = sum(stat.size for stat in top_stats)
+    cprint("Total allocated size: \033[31m%.1f MiB\033[0m" % (total / 1024 / 1024))
+
+
+
 def get_open_fds():
     '''
     return the number of open file descriptors for current process
@@ -132,6 +167,8 @@ class ISGRILCSum(ddosa.DataAnalysis):
         return nlc
 		
     def main(self):
+        tracemalloc.start()
+
         lcs = {}
 
         choice = self.input_lclist.lcs
@@ -218,6 +255,11 @@ class ISGRILCSum(ddosa.DataAnalysis):
             except Exception as e:
                 print("unable to check open fds")
 
+            snapshot = tracemalloc.take_snapshot()
+            display_top(snapshot)
+
+
+
         # self.lcs=lcs
 
         # source_results = []
@@ -247,6 +289,9 @@ class ISGRILCSum(ddosa.DataAnalysis):
             self.extracted_sources.append([name, attr])
 
             setattr(self, attr, da.DataFile(fn))
+
+            snapshot = tracemalloc.take_snapshot()
+            display_top(snapshot)
 
 
 dataanalysis.callback.default_callback_filter.set_callback_accepted_classes(
