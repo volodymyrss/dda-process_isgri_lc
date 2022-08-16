@@ -84,7 +84,7 @@ def get_open_fds():
 
     # files=filter(
     #        lambda s: s and s[ 0 ] == 'f' and s[1: ].isdigit(),
-    files = procs.split('\n')
+    files = procs.decode().split('\n')
 
     # print(files)
 
@@ -211,40 +211,42 @@ class ISGRILCSum(ddosa.DataAnalysis):
                   ((len(choice)-i_lc)*(tc-t0)/i_lc))
             i_lc += 1
             print("lc from", fn)
-            
-            with fits.open(fn, memmap=False) as f:
+                        
+            f = fits.open(fn, memmap=False)
+            print("proceeding to parse", f.filename())
 
-                t1, t2 = f[1].header['TSTART'], f[1].header['TSTOP']
-                print(t1, t2)
+            t1, t2 = f[1].header['TSTART'], f[1].header['TSTOP']
+            print(t1, t2)
 
-                for _e in f:
-                    print("proceeding to open in", f.filename(), "extension", _e)
+            for _e in f:                    
+                e = deepcopy(_e.copy())
+                del _e
 
-                    e = deepcopy(_e.copy())
-                    del _e
+                if e.header.get('EXTNAME', 'unnamed') != "ISGR-SRC.-LCR":
+                    continue
+                
+                name = e.header.get('NAME', "Unnamed")
 
-                    if e.header.get('EXTNAME', 'unnamed') != "ISGR-SRC.-LCR":
-                        continue
-                    
-                    name = e.header.get('NAME', "Unnamed")
+                allsource_summary.append(
+                    [name, t1, t2, e.data['RATE'], e.data['ERROR']])
 
-                    allsource_summary.append(
-                        [name, t1, t2, e.data['RATE'], e.data['ERROR']])
+                if (name in self.sources) or (self.extract_all):
+                    rate = e.data['RATE']
+                    err = e.data['ERROR']
+                    if name not in lcs:
+                        print("new lcs[name]", name)
+                        lcs[name] = e
+                    else:                        
+                        print("lcs[name].data of", len(lcs[name].data), "e.data of", len(e.data))
+                        lcs[name].data = concatenate((lcs[name].data, e.data))
 
-                    if (name in self.sources) or (self.extract_all):
-                        rate = e.data['RATE']
-                        err = e.data['ERROR']
-                        if name not in lcs:
-                            print("new lcs[name]", name)
-                            lcs[name] = e
-                        else:                        
-                            print("lcs[name].data of", len(lcs[name].data), "e.data of", len(e.data))
-                            lcs[name].data = concatenate((lcs[name].data, e.data))
+                    print(render("{BLUE}%.20s{/}" % name), "%.4lg sigma" % (sig(rate, err)),
+                        "total %.4lg" % (sig(lcs[name].data['RATE'], lcs[name].data['ERROR'])))
 
-                        print(render("{BLUE}%.20s{/}" % name), "%.4lg sigma" % (sig(rate, err)),
-                            "total %.4lg" % (sig(lcs[name].data['RATE'], lcs[name].data['ERROR'])))
+                    print("\033[31msize of lcs[name]", lcs[name].size/1024/1024, "Mb" , lcs[name].data.size * lcs[name].data.itemsize/1024/1024, "Mb\033[0m")
 
-                        print("\033[31msize of lcs[name]", lcs[name].size/1024/1024, "Mb" , lcs[name].data.size * lcs[name].data.itemsize/1024/1024, "Mb\033[0m")
+            del f
+
 
             print('RAM memory % used:', psutil.virtual_memory()[2])
             print('RAM memory:', psutil.virtual_memory())
