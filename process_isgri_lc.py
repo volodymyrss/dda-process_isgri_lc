@@ -208,47 +208,45 @@ class ISGRILCSum(ddosa.DataAnalysis):
             i_lc += 1
             print("lc from", fn)
 
-            f = fits.open(fn)
+            with fits.open(fn) as f:
 
-            t1, t2 = f[1].header['TSTART'], f[1].header['TSTOP']
-            print(t1, t2)
+                t1, t2 = f[1].header['TSTART'], f[1].header['TSTOP']
+                print(t1, t2)
 
-            for e in f:
-                print("proceeding to open in", f.filename(), "extension", e)
-                # Getting % usage of virtual_memory ( 3rd field)
-                print('RAM memory % used:', psutil.virtual_memory()[2])
+                for e in f:
+                    print("proceeding to open in", f.filename(), "extension", e)
+                    # Getting % usage of virtual_memory ( 3rd field)
+                    print('RAM memory % used:', psutil.virtual_memory()[2])
 
 
-                try:
-                    if e.header['EXTNAME'] != "ISGR-SRC.-LCR":
+                    try:
+                        if e.header['EXTNAME'] != "ISGR-SRC.-LCR":
+                            continue
+                    except:
                         continue
-                except:
-                    continue
 
-                try:
-                    name = e.header['NAME']
-                except:
-                    name = "Unnamed"
+                    try:
+                        name = e.header['NAME']
+                    except:
+                        name = "Unnamed"
 
-                allsource_summary.append(
-                    [name, t1, t2, copy(e.data['RATE']), copy(e.data['ERROR'])])
+                    allsource_summary.append(
+                        [name, t1, t2, copy(e.data['RATE']), copy(e.data['ERROR'])])
 
-                if (name in self.sources) or (self.extract_all):
-                    rate = e.data['RATE']
-                    err = e.data['ERROR']
-                   # exposure = e.header['EXPOSURE']
-                    if name not in lcs:
-                        print("new lcs[name]", lcs, name)
-                        lcs[name] = e.copy()
-                     #   preserve_file = True
-                    else:                        
-                        print("lcs[name].data of", len(lcs[name].data), "e.data of", len(e.data))
-                        lcs[name].data = concatenate((lcs[name].data, e.data))
+                    if (name in self.sources) or (self.extract_all):
+                        rate = e.data['RATE']
+                        err = e.data['ERROR']
+                    # exposure = e.header['EXPOSURE']
+                        if name not in lcs:
+                            print("new lcs[name]", lcs, name)
+                            lcs[name] = e.copy()
+                        #   preserve_file = True
+                        else:                        
+                            print("lcs[name].data of", len(lcs[name].data), "e.data of", len(e.data))
+                            lcs[name].data = concatenate((lcs[name].data, e.data))
 
-                    print(render("{BLUE}%.20s{/}" % name), "%.4lg sigma" % (sig(rate, err)),
-                          "total %.4lg" % (sig(lcs[name].data['RATE'], lcs[name].data['ERROR'])))
-
-            f.close()
+                        print(render("{BLUE}%.20s{/}" % name), "%.4lg sigma" % (sig(rate, err)),
+                            "total %.4lg" % (sig(lcs[name].data['RATE'], lcs[name].data['ERROR'])))
 
             try:
                 print(get_open_fds())
