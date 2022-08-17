@@ -116,12 +116,12 @@ class ScWLCList(ddosa.DataAnalysis):
             raise ddosa.EmptyScWList()
 
 
-def print_tracemem_diff(base_snapshot, comment):
+def print_tracemem_diff(base_snapshot, comment, limit_Mb=0.1):
     snapshot = tracemalloc.take_snapshot()
     diff = snapshot.compare_to(base_snapshot, 'lineno')            
-    print("[ Top differences > 1Mb ] after", comment)
-    for stat in diff:
-        if stat.size_diff/1024./1024 > 1:
+    print("[ Top differences > ", limit_Mb, "Mb ] after", comment)
+    for i, stat in enumerate(diff):
+        if i == 0 or stat.size_diff/1024./1024 > limit_Mb:
             print("\033[31m", stat.size_diff/1024./1024, "Mb", "\033[32m", stat, "\033[0m")
             for line in stat.traceback: #.format():
                 print("\033[32m", line.filename, line.lineno, "\033[0m")            
