@@ -116,6 +116,19 @@ class ScWLCList(ddosa.DataAnalysis):
             raise ddosa.EmptyScWList()
 
 
+def print_tracemem_diff(base_snapshot, comment):
+    snapshot = tracemalloc.take_snapshot()
+    diff = snapshot.compare_to(base_snapshot, 'lineno')            
+    print("[ Top differences > 1Mb ] after", comment)
+    for stat in diff:
+        if stat.size_diff/1024./1024 > 1:
+            print("\033[31m", stat.size_diff/1024./1024, "Mb", "\033[32m", stat, "\033[0m")
+            for line in stat.traceback: #.format():
+                print("\033[32m", line.filename, line.lineno, "\033[0m")            
+    return snapshot
+
+
+
 class ISGRILCSum(ddosa.DataAnalysis):
     input_lclist = ScWLCList
 
@@ -196,7 +209,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
                 print(dir(lc))
                 continue
 
-            snapshot_pre_loop = tracemalloc.take_snapshot()
+            snapshot = tracemalloc.take_snapshot()
 
             fn = lc.lightcurve.get_path()
 
@@ -211,6 +224,8 @@ class ISGRILCSum(ddosa.DataAnalysis):
                   ((len(choice)-i_lc)*(tc-t0)/i_lc))
             i_lc += 1
             print("lc from", fn)
+
+            snapshot = print_tracemem_diff(snapshot, "before opening file")
                         
             f = fits.open(fn, memmap=False, mode='readonly', cache=False)
             print("proceeding to parse", f.filename())
@@ -230,7 +245,10 @@ class ISGRILCSum(ddosa.DataAnalysis):
                 allsource_summary.append(
                     [name, t1, t2, e.data['RATE'], e.data['ERROR']])
 
+                snapshot = print_tracemem_diff(snapshot, "before source loop")
+
                 if (name in self.sources) or (self.extract_all):
+                    snapshot = print_tracemem_diff(snapshot, "before one source")
                     rate = e.data['RATE']
                     err = e.data['ERROR']
                     if name not in lcs:
@@ -244,9 +262,13 @@ class ISGRILCSum(ddosa.DataAnalysis):
                         "total %.4lg" % (sig(lcs[name].data['RATE'], lcs[name].data['ERROR'])))
 
                     print("\033[31msize of lcs[name]", lcs[name].size/1024/1024, "Mb" , lcs[name].data.size * lcs[name].data.itemsize/1024/1024, "Mb\033[0m")
+                    snapshot = print_tracemem_diff(snapshot, "after one source")
+
+            snapshot = print_tracemem_diff(snapshot, "after source loop")
 
             del f
 
+            snapshot = print_tracemem_diff(snapshot, "after delete")
 
             print('RAM memory % used:', psutil.virtual_memory()[2])
             print('RAM memory:', psutil.virtual_memory())
@@ -255,29 +277,6 @@ class ISGRILCSum(ddosa.DataAnalysis):
                 print("get_open_fds", get_open_fds())
             except Exception as e:
                 print("unable to check open fds", e)
-
-
-
-            A = np.random.rand(1024*1024*50)
-            del A
-            
-            snapshot = tracemalloc.take_snapshot()
-            display_top(snapshot)
-
-            diff = snapshot.compare_to(snapshot_pre_loop, 'lineno')
-            
-            print("[ Top 10 differences ]")
-            for stat in diff[:10]:
-                print("\033[31m", stat.size_diff/1024./1024, "Mb", "\033[32m", stat, "\033[0m")
-
-            # assert diff[0].size_diff*u.B < 1*u.MB
-
-            # pick the biggest memory block
-            stat = diff[0]
-            print("%s memory blocks: %.1f KiB" % (stat.count, stat.size / 1024))
-            for line in stat.traceback.format():
-                print(line)
-
 
 
         # self.lcs=lcs
