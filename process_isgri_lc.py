@@ -119,12 +119,20 @@ class ScWLCList(ddosa.DataAnalysis):
 def print_tracemem_diff(base_snapshot, comment, limit_Mb=0.1):
     snapshot = tracemalloc.take_snapshot()
     diff = snapshot.compare_to(base_snapshot, 'lineno')            
-    print("[ Top differences > ", limit_Mb, "Mb ] after", comment)
-    for i, stat in enumerate(diff):
-        if i == 0 or stat.size_diff/1024./1024 > limit_Mb:
-            print("\033[31m", stat.size_diff/1024./1024, "Mb", "\033[32m", stat, "\033[0m")
-            for line in stat.traceback: #.format():
-                print("\033[32m", line.filename, line.lineno, "\033[0m")            
+    del base_snapshot
+
+    total_diff_Mb = sum(stat.size_diff for stat in diff)/1024/1024
+    total_size_Mb = sum(stat.size for stat in snapshot.statistics('filename'))/1024/1024
+
+    print(f"{comment:30s} \033[32mTotal now \033[31m {total_size_Mb:.3f} Mb \033[0m change \033[31m {total_diff_Mb:.3f} Mb \033[0m")
+    
+    if total_diff_Mb > limit_Mb:
+        for i, stat in enumerate(diff):
+            if i < 3 or abs(stat.size_diff/1024./1024) > limit_Mb:
+                print("\033[31m", stat.size_diff/1024./1024, "Mb", "\033[32m", stat, "\033[0m")
+                for line in stat.traceback: #.format():
+                    print("\033[32m", line.filename, line.lineno, "\033[0m")            
+            
     return snapshot
 
 
@@ -234,11 +242,19 @@ class ISGRILCSum(ddosa.DataAnalysis):
             print(t1, t2)
 
             for _e in f:                    
-                e = _e.copy()
-                del _e
-
-                if e.header.get('EXTNAME', 'unnamed') != "ISGR-SRC.-LCR":
+                if _e.header.get('EXTNAME', 'unnamed') != "ISGR-SRC.-LCR":
                     continue
+
+                snapshot = print_tracemem_diff(snapshot, "starting extension loop")
+                e = _e.__class__(
+                        # header=fits.Header(dict(_e.header)),
+                        header=deepcopy(_e.header),
+                        data=deepcopy(_e.data)
+                    )
+                snapshot = print_tracemem_diff(snapshot, "copied extension")
+                # del e
+                snapshot = print_tracemem_diff(snapshot, "deleted copied extension")
+                # continue
                 
                 name = e.header.get('NAME', "Unnamed")
 
@@ -256,7 +272,16 @@ class ISGRILCSum(ddosa.DataAnalysis):
                         lcs[name] = e
                     else:                        
                         print("lcs[name].data of", len(lcs[name].data), "e.data of", len(e.data))
-                        lcs[name].data = concatenate((lcs[name].data, e.data))
+                        # lcs[name].data = concatenate((lcs[name].data, e.data))
+                        r = lcs[name].data
+
+                        snapshot = print_tracemem_diff(snapshot, "before stack")
+                        lcs[name].data = np.vstack([r, e.data])
+                        snapshot = print_tracemem_diff(snapshot, "after stack")
+                        del r
+                        snapshot = print_tracemem_diff(snapshot, "deleted r")
+                        del e
+                        snapshot = print_tracemem_diff(snapshot, "deleted copied extension")
 
                     print(render("{BLUE}%.20s{/}" % name), "%.4lg sigma" % (sig(rate, err)),
                         "total %.4lg" % (sig(lcs[name].data['RATE'], lcs[name].data['ERROR'])))
@@ -277,6 +302,10 @@ class ISGRILCSum(ddosa.DataAnalysis):
                 print("get_open_fds", get_open_fds())
             except Exception as e:
                 print("unable to check open fds", e)
+
+            display_top(snapshot)
+            tracemalloc.stop()
+            tracemalloc.start()
 
 
         # self.lcs=lcs
