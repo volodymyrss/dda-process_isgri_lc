@@ -276,7 +276,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
                         r = lcs[name].data
 
                         snapshot = print_tracemem_diff(snapshot, "before stack")
-                        lcs[name].data = np.vstack([r, e.data])
+                        lcs[name].data = np.concatenate([r, e.data])
                         snapshot = print_tracemem_diff(snapshot, "after stack")
                         del r
                         snapshot = print_tracemem_diff(snapshot, "deleted r")
