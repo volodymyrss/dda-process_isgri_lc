@@ -120,7 +120,7 @@ def print_tracemem_diff(base_snapshot, comment, limit_Mb=0.1):
     snapshot = tracemalloc.take_snapshot()
     diff = snapshot.compare_to(base_snapshot, 'lineno')            
     del base_snapshot
-
+    
     total_diff_Mb = sum(stat.size_diff for stat in diff)/1024/1024
     total_size_Mb = sum(stat.size for stat in snapshot.statistics('filename'))/1024/1024
 
@@ -132,6 +132,8 @@ def print_tracemem_diff(base_snapshot, comment, limit_Mb=0.1):
                 print("\033[31m", stat.size_diff/1024./1024, "Mb", "\033[32m", stat, "\033[0m")
                 for line in stat.traceback: #.format():
                     print("\033[32m", line.filename, line.lineno, "\033[0m")            
+
+    del diff
             
     return snapshot
 
@@ -207,6 +209,8 @@ class ISGRILCSum(ddosa.DataAnalysis):
 
         used_fns = []
 
+        early_snapshot = tracemalloc.take_snapshot()
+
         for lc, in choice:
             if hasattr(lc, 'empty_results'):
                 print("skipping, for clearly empty:", lc)
@@ -226,11 +230,6 @@ class ISGRILCSum(ddosa.DataAnalysis):
             else:
                 used_fns.append(fn)
 
-            print("%i/%i" % (i_lc, len(choice)))
-            tc = time.time()
-            print("seconds per lc:", (tc-t0)/i_lc, "will be ready in %.5lg seconds" %
-                  ((len(choice)-i_lc)*(tc-t0)/i_lc))
-            i_lc += 1
             print("lc from", fn)
 
             snapshot = print_tracemem_diff(snapshot, "before opening file")
@@ -306,6 +305,19 @@ class ISGRILCSum(ddosa.DataAnalysis):
             display_top(snapshot)
             # tracemalloc.stop()
             # tracemalloc.start()
+
+            # summary and prediction
+
+            print("%i/%i" % (i_lc, len(choice)))
+            tc = time.time()
+            print("seconds per lc:", (tc-t0)/i_lc, "will be ready in %.5lg seconds" %
+                  ((len(choice)-i_lc)*(tc-t0)/i_lc))
+            i_lc += 1
+            
+            total_diff_Mb = sum(stat.size_diff for stat in snapshot.compare_to(early_snapshot, 'lineno'))/1024/1024
+            print(f'\033[32mtotal diff per lc: \033[31m{total_diff_Mb/i_lc} Mb\033[0m, expect {(len(choice))*total_diff_Mb/i_lc} Mb')
+
+            
 
 
         # self.lcs=lcs
