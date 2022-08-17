@@ -263,7 +263,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
                 snapshot = print_tracemem_diff(snapshot, "before source loop")
 
                 if (name in self.sources) or (self.extract_all):
-                    snapshot = print_tracemem_diff(snapshot, "before one source")
+                    # snapshot = print_tracemem_diff(snapshot, "before one source")
                     rate = e.data['RATE']
                     err = e.data['ERROR']
                     if name not in lcs:
@@ -274,19 +274,19 @@ class ISGRILCSum(ddosa.DataAnalysis):
                         # lcs[name].data = concatenate((lcs[name].data, e.data))
                         r = lcs[name].data
 
-                        snapshot = print_tracemem_diff(snapshot, "before stack")
+                        # snapshot = print_tracemem_diff(snapshot, "before stack")
                         lcs[name].data = np.concatenate([r, e.data])
-                        snapshot = print_tracemem_diff(snapshot, "after stack")
+                        # snapshot = print_tracemem_diff(snapshot, "after stack")
                         del r
-                        snapshot = print_tracemem_diff(snapshot, "deleted r")
+                        # snapshot = print_tracemem_diff(snapshot, "deleted r")
                         del e
-                        snapshot = print_tracemem_diff(snapshot, "deleted copied extension")
+                        # snapshot = print_tracemem_diff(snapshot, "deleted copied extension")
 
                     print(render("{BLUE}%.20s{/}" % name), "%.4lg sigma" % (sig(rate, err)),
                         "total %.4lg" % (sig(lcs[name].data['RATE'], lcs[name].data['ERROR'])))
 
                     print("\033[31msize of lcs[name]", lcs[name].size/1024/1024, "Mb" , lcs[name].data.size * lcs[name].data.itemsize/1024/1024, "Mb\033[0m")
-                    snapshot = print_tracemem_diff(snapshot, "after one source")
+                    # snapshot = print_tracemem_diff(snapshot, "after one source")
 
             snapshot = print_tracemem_diff(snapshot, "after source loop")
 
