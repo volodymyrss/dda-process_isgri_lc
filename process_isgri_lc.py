@@ -304,8 +304,8 @@ class ISGRILCSum(ddosa.DataAnalysis):
                 print("unable to check open fds", e)
 
             display_top(snapshot)
-            tracemalloc.stop()
-            tracemalloc.start()
+            # tracemalloc.stop()
+            # tracemalloc.start()
 
 
         # self.lcs=lcs
