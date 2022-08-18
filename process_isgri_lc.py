@@ -116,7 +116,7 @@ class ScWLCList(ddosa.DataAnalysis):
             raise ddosa.EmptyScWList()
 
 
-def print_tracemem_diff(base_snapshot, comment, limit_Mb=0.1):
+def print_tracemem_diff(base_snapshot, comment, limit_Mb=0.01):
     snapshot = tracemalloc.take_snapshot()
     diff = snapshot.compare_to(base_snapshot, 'lineno')            
     del base_snapshot
@@ -128,7 +128,7 @@ def print_tracemem_diff(base_snapshot, comment, limit_Mb=0.1):
     
     if total_diff_Mb > limit_Mb:
         for i, stat in enumerate(diff):
-            if i < 3 or abs(stat.size_diff/1024./1024) > limit_Mb:
+            if i < 5 or abs(stat.size_diff/1024./1024) > limit_Mb:
                 print("\033[31m", stat.size_diff/1024./1024, "Mb", "\033[32m", stat, "\033[0m")
                 for line in stat.traceback: #.format():
                     print("\033[32m", line.filename, line.lineno, "\033[0m")            
@@ -250,25 +250,27 @@ class ISGRILCSum(ddosa.DataAnalysis):
                         header=deepcopy(_e.header),
                         data=deepcopy(_e.data)
                     )
-                snapshot = print_tracemem_diff(snapshot, "copied extension")
                 # del e
-                snapshot = print_tracemem_diff(snapshot, "deleted copied extension")
                 # continue
                 
                 name = e.header.get('NAME', "Unnamed")
 
-                allsource_summary.append(
-                    [name, t1, t2, e.data['RATE'], e.data['ERROR']])
+                # allsource_summary.append(
+                #     [name, t1, t2, e.data['RATE'], e.data['ERROR']])
 
                 snapshot = print_tracemem_diff(snapshot, "before source loop")
 
                 if (name in self.sources) or (self.extract_all):
                     # snapshot = print_tracemem_diff(snapshot, "before one source")
-                    rate = e.data['RATE']
-                    err = e.data['ERROR']
+                    rate = np.array(deepcopy(e.data['RATE']))
+                    err = np.array(deepcopy(e.data['ERROR']))
                     if name not in lcs:
                         print("new lcs[name]", name)
-                        lcs[name] = e
+                        lcs[name] =  e.__class__(
+                            # header=fits.Header(dict(_e.header)),
+                            header=deepcopy(e.header),
+                            data=deepcopy(e.data)
+                        )
                     else:                        
                         print("lcs[name].data of", len(lcs[name].data), "e.data of", len(e.data))
                         # lcs[name].data = concatenate((lcs[name].data, e.data))
@@ -279,7 +281,6 @@ class ISGRILCSum(ddosa.DataAnalysis):
                         # snapshot = print_tracemem_diff(snapshot, "after stack")
                         del r
                         # snapshot = print_tracemem_diff(snapshot, "deleted r")
-                        del e
                         # snapshot = print_tracemem_diff(snapshot, "deleted copied extension")
 
                     print(render("{BLUE}%.20s{/}" % name), "%.4lg sigma" % (sig(rate, err)),
@@ -288,6 +289,8 @@ class ISGRILCSum(ddosa.DataAnalysis):
                     print("\033[31msize of lcs[name]", lcs[name].size/1024/1024, "Mb" , lcs[name].data.size * lcs[name].data.itemsize/1024/1024, "Mb\033[0m")
                     # snapshot = print_tracemem_diff(snapshot, "after one source")
 
+                del e
+                        
             snapshot = print_tracemem_diff(snapshot, "after source loop")
 
             del f
@@ -305,6 +308,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
             display_top(snapshot)
             # tracemalloc.stop()
             # tracemalloc.start()
+            tracemalloc.clear_traces()
 
             # summary and prediction
 
