@@ -240,6 +240,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
             t1, t2 = f[1].header['TSTART'], f[1].header['TSTOP']
             print(t1, t2)
 
+            snapshot = print_tracemem_diff(snapshot, "before extension loop")
             for _e in f:                    
                 if _e.header.get('EXTNAME', 'unnamed') != "ISGR-SRC.-LCR":
                     continue
@@ -258,30 +259,31 @@ class ISGRILCSum(ddosa.DataAnalysis):
                 # allsource_summary.append(
                 #     [name, t1, t2, e.data['RATE'], e.data['ERROR']])
 
-                snapshot = print_tracemem_diff(snapshot, "before source loop")
+                snapshot = print_tracemem_diff(snapshot, "after extension copy, before source loop")
 
                 if (name in self.sources) or (self.extract_all):
-                    # snapshot = print_tracemem_diff(snapshot, "before one source")
+                    snapshot = print_tracemem_diff(snapshot, "before one source")
                     rate = np.array(deepcopy(e.data['RATE']))
                     err = np.array(deepcopy(e.data['ERROR']))
-                    if name not in lcs:
+                    snapshot = print_tracemem_diff(snapshot, "copied rate")
+                    if name not in lcs:                        
                         print("new lcs[name]", name)
                         lcs[name] =  e.__class__(
                             # header=fits.Header(dict(_e.header)),
-                            header=deepcopy(e.header),
+                            header=deepcopy(e.header), #TODO: try copy dict?
                             data=deepcopy(e.data)
                         )
+                        snapshot = print_tracemem_diff(snapshot, "constructed new default extension")
                     else:                        
                         print("lcs[name].data of", len(lcs[name].data), "e.data of", len(e.data))
                         # lcs[name].data = concatenate((lcs[name].data, e.data))
                         r = lcs[name].data
+                        snapshot = print_tracemem_diff(snapshot, "renamed saved rate")
 
-                        # snapshot = print_tracemem_diff(snapshot, "before stack")
                         lcs[name].data = np.concatenate([r, e.data])
-                        # snapshot = print_tracemem_diff(snapshot, "after stack")
+                        snapshot = print_tracemem_diff(snapshot, "concatenated")
                         del r
-                        # snapshot = print_tracemem_diff(snapshot, "deleted r")
-                        # snapshot = print_tracemem_diff(snapshot, "deleted copied extension")
+                        snapshot = print_tracemem_diff(snapshot, "deleted saved rate")
 
                     print(render("{BLUE}%.20s{/}" % name), "%.4lg sigma" % (sig(rate, err)),
                         "total %.4lg" % (sig(lcs[name].data['RATE'], lcs[name].data['ERROR'])))
@@ -290,12 +292,13 @@ class ISGRILCSum(ddosa.DataAnalysis):
                     # snapshot = print_tracemem_diff(snapshot, "after one source")
 
                 del e
+                snapshot = print_tracemem_diff(snapshot, "deleted saved copied extension")
                         
             snapshot = print_tracemem_diff(snapshot, "after source loop")
 
             del f
 
-            snapshot = print_tracemem_diff(snapshot, "after delete")
+            snapshot = print_tracemem_diff(snapshot, "after delete file")
 
             print('RAM memory % used:', psutil.virtual_memory()[2])
             print('RAM memory:', psutil.virtual_memory())
