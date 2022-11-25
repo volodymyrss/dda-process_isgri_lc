@@ -338,7 +338,7 @@ class ISGRILCSum(ddosa.DataAnalysis):
             prepatch_fn = "isgri_sum_lc_prepatch_%s.fits" % source_short_name
             fn = "isgri_sum_lc_%s.fits" % source_short_name
 
-            lc.writeto(prepatch_fn, clobber=True)
+            lc.writeto(prepatch_fn, overwrite=True)
 
             reopened_lc = fits.open(prepatch_fn)
             patched_lc = fits.HDUList([fits.PrimaryHDU(), self.patch_isgri_lc_xax_e(reopened_lc[1])])
